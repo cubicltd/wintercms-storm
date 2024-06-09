@@ -450,6 +450,14 @@ class Resizer
         $image = $this->image;
 
         $imageQuality = $this->getOption('quality');
+        if (!is_numeric($imageQuality) || (int)$imageQuality != $imageQuality || $imageQuality < -1 || $imageQuality > 100) {
+            throw new Exception(
+                sprintf(
+                    'Invalid image quality: %s. Accepted integer range: -1 (default) or 0-100.',
+                    $imageQuality
+                )
+            );
+        }
 
         if ($this->getOption('interlace')) {
             imageinterlace($image, true);
@@ -464,6 +472,10 @@ class Resizer
             case 'jpeg':
                 // Check JPG support is enabled
                 if (imagetypes() & IMG_JPG) {
+                    // Old default quality
+                    if ($imageQuality === -1) {
+                        $imageQuality = 90;
+                    }
                     imagejpeg($image, $savePath, $imageQuality);
                 }
                 break;
@@ -476,15 +488,18 @@ class Resizer
                 break;
 
             case 'png':
-                // Scale quality from 0-100 to 0-9
-                $scaleQuality = (int) round(($imageQuality / 100) * 9);
-
-                // Invert quality setting as 0 is best, not 9
-                $invertScaleQuality = 9 - $scaleQuality;
-
                 // Check PNG support is enabled
                 if (imagetypes() & IMG_PNG) {
-                    imagepng($image, $savePath, $invertScaleQuality);
+                    // Scale quality from 0->100 to 9->0 (0 is best, 9 is worst)
+                    // Old default quality
+                    if ($imageQuality === -1) {
+                        $imageQuality = 1;
+                    }
+                    // Accept scale 100 values
+                    if ($imageQuality > 9) {
+                        $imageQuality = (int) round((100 - $imageQuality) / 10);
+                    }
+                    imagepng($image, $savePath, $imageQuality);
                 }
                 break;
 
